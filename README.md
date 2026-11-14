@@ -1,59 +1,77 @@
-# jfsh
+# jfsh (IINA fork)
 
-A terminal-based client for [Jellyfin](https://jellyfin.org) that lets you browse your media library and play videos via [mpv](https://mpv.io).
-Inspired by [jftui](https://github.com/Aanok/jftui).
+A terminal-based client for [Jellyfin](https://jellyfin.org) that lets you browse your
+media library and play videos in [IINA](https://iina.io).
+
+Private fork of [hacel/jfsh](https://github.com/hacel/jfsh), which plays through
+[mpv](https://mpv.io) instead. Upstream was inspired by
+[jftui](https://github.com/Aanok/jftui).
 
 ![Demo](demo/demo.gif)
 
+> The demo above is upstream's and still shows mpv.
+
+## How this differs from upstream
+
+Upstream drives mpv as a long-lived process over mpv's JSON IPC socket, which is how it
+reports progress, resumes, queues the next episode, loads subtitles and skips intros.
+IINA embeds mpv through the client API rather than the terminal, so it cannot stand in
+for that socket.
+
+It does not need to. This fork hands the stream URL to IINA and exits, leaving playback
+state to the [iina-jellyfin](https://github.com/mhajder/iina-jellyfin) plugin, which
+recognizes the item from the `api_key` in the URL. The mpv IPC client is deleted rather
+than ported.
+
+Concretely:
+
+- Playback is a one-shot `iina --no-stdin <url>`. The browser returns immediately
+  instead of blocking until the player exits.
+- Stream URLs are `/Videos/{id}/stream?static=true&api_key={token}`. The capitalized
+  route and the token are what the plugin matches on; upstream's lowercase tokenless URL
+  is ignored by it. The token is not needed to stream, only to be recognized.
+- `skip_segments` is no longer read. Intro skipping comes from the IINA side.
+- **macOS only**, because IINA is. Upstream supports Linux and Windows.
+
 ## Features
 
-- Uses _your_ mpv config!
-- Resumes playback!
-- Tracks playback progress and updates jellyfin!
-- Automatic segment (intro, etc.) skipping!
-- No mouse required!
+- Browse your Jellyfin library and play in IINA
+- No mouse required
+
+These come from the IINA plugins rather than from jfsh:
+
+- Resumes playback, and reports progress back to Jellyfin
+- Autoplays the next episode
+- Picks preferred audio and subtitle tracks
+- Skips intros, via [Episode Info](https://github.com/Zain-Imam/iina-episode-info)
 
 ## Installation
 
 ### Prerequisites
 
 - A running [Jellyfin](https://jellyfin.org) instance.
-- [mpv](https://mpv.io) available in PATH.
+- [IINA](https://iina.io), with `iina` in `PATH`. The Homebrew cask symlinks it:
 
-#### Install from AUR
+  ```sh
+  brew install --cask iina
+  ```
 
-On Arch Linux, jfsh can be installed from the [AUR](https://aur.archlinux.org/packages/jfsh)
+- The [iina-jellyfin](https://github.com/mhajder/iina-jellyfin) plugin, installed in
+  IINA and logged in to the same server. Without it, video still plays but nothing is
+  reported back to Jellyfin.
 
-```sh
-yay -S jfsh
-```
+mpv is not required.
 
-#### Install with Nix
+### Install
 
-Run jfsh directly from GitHub:
-
-```sh
-nix run github:hacel/jfsh
-```
-
-Or install it into your user profile:
+From a clone of this repository:
 
 ```sh
-nix profile install github:hacel/jfsh
+go install .
 ```
 
-The Nix package uses an existing `mpv` from `PATH` when available and provides
-the packaged `mpv` as a fallback.
-
-#### Download a release
-
-Download the latest pre-built binary for your platform from the [releases page](https://github.com/hacel/jfsh/releases/latest).
-
-#### Install via go
-
-```sh
-go install github.com/hacel/jfsh@latest
-```
+Upstream's AUR package, `nix run github:hacel/jfsh` and the GitHub releases all install
+*upstream* jfsh, which uses mpv, so they are not install paths for this fork.
 
 ## Usage
 
@@ -74,7 +92,7 @@ go install github.com/hacel/jfsh@latest
 3. **Play Media**
 
    - Select an item and press **Enter** or **Space** to play it.
-   - `mpv` will launch and begin streaming.
+   - IINA opens in its own window and jfsh returns to the browser.
 
 4. **Quit**
 
@@ -82,81 +100,23 @@ go install github.com/hacel/jfsh@latest
 
 ## Configuration
 
-By default, the configuration file is stored in `$XDG_CONFIG_HOME/jfsh/jfsh.yaml`. If `$XDG_CONFIG_HOME` is not set it defaults to:
-
-- **Linux**: `~/.config/jfsh/jfsh.yaml`
-- **macOS**: `~/Library/Application Support/jfsh/jfsh.yaml`
-- **Windows**: `%APPDATA%/jfsh/jfsh.yaml`
+By default, the configuration file is stored in `$XDG_CONFIG_HOME/jfsh/jfsh.yaml`. If
+`$XDG_CONFIG_HOME` is not set it defaults to `~/Library/Application Support/jfsh/jfsh.yaml`
+on macOS.
 
 ```yaml
 host: http://localhost:8096
 username: me
 device: mycomputer # Device name to report to jellyfin (default: hostname)
 password_file: /run/secrets/jfsh-password # Optional runtime secret file
-skip_segments: # Segments to automatically skip (default: [])
-  - Recap
-  - Preview
-  - Intro
-  - Outro
 ```
 
 When no reusable token or `password_file` is available, jfsh prompts for the
 password. Passwords are never stored by jfsh. Authentication tokens and the
 generated device ID are stored in `$XDG_STATE_HOME/jfsh/state.yaml`.
 
-### Home Manager
-
-The flake exports `homeManagerModules.default`. Import it into a standalone
-Home Manager configuration or under `home-manager.users.<name>` in NixOS:
-
-```nix
-{
-  imports = [ inputs.jfsh.homeManagerModules.default ];
-
-  programs.jfsh = {
-    enable = true;
-
-    settings = {
-      host = "https://jellyfin.example.com";
-      username = "me";
-      device = "mycomputer";
-      skipSegments = [
-        "Recap"
-        "Intro"
-        "Outro"
-      ];
-    };
-
-    passwordFile = "/run/secrets/jfsh-password";
-  };
-}
-```
-
-Add jfsh to the consuming flake and share its existing inputs:
-
-```nix
-inputs.jfsh = {
-  url = "github:hacel/jfsh";
-  inputs.nixpkgs.follows = "nixpkgs";
-  inputs.home-manager.follows = "home-manager";
-};
-```
-
-`passwordFile` must be an absolute runtime path. It is a string rather than a
-Nix path so the password is not copied into the Nix store. The file can be
-provided by a secret manager such as sops-nix or agenix. Omit it to enter the
-password interactively on first authentication.
-
-### Migrating existing configuration
-
-The legacy `password`, `token`, `user_id`, `device_id`, and `client_version`
-configuration keys are ignored. Remove them manually, especially the plaintext
-`password`, and authenticate once to create the new state file. Existing
-`host`, `username`, `device`, and `skip_segments` settings continue to work.
-
-### Segment skipping
-
-By default, no segments are automatically skipped. To enable skipping segments you must add `skip_segments` to the configuration file. Possible values for `skip_segments` are the segment types in Jellyfin which are: `Unknown`, `Commercial`, `Preview`, `Recap`, `Outro` and `Intro`.
+`skip_segments` is still accepted in the config file for compatibility with upstream,
+but this fork never reads it.
 
 ## Plans
 
