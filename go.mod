@@ -3,7 +3,6 @@ module github.com/hacel/jfsh
 go 1.23.1
 
 require (
-	github.com/Microsoft/go-winio v0.6.2
 	github.com/adrg/xdg v0.5.3
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.6
