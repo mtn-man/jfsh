@@ -38,6 +38,11 @@ type model struct {
 	allItems    []jellyfin.Item
 	currentItem int
 
+	// Set by reloadItems so the next fetchItemsResult keeps the filter and puts
+	// the cursor back on the item it was on.
+	preserveSelection bool
+	preservedItemID   string
+
 	filterActive bool
 	filterInput  textinput.Model
 

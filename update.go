@@ -127,6 +127,34 @@ func (m *model) fetchItems() tea.Cmd {
 	}
 }
 
+// reloadItems refetches the current list without disturbing the view: the filter
+// stays applied and the cursor returns to the item it was on. fetchItems clears
+// both, which is what a tab change or drilling into a series wants.
+func (m *model) reloadItems() tea.Cmd {
+	m.preserveSelection = true
+	m.preservedItemID = ""
+	if m.currentItem < len(m.items) {
+		m.preservedItemID = m.items[m.currentItem].GetId()
+	}
+	return m.fetchItems()
+}
+
+// restoreSelection puts the cursor back on preservedItemID. Resume and Next Up
+// reorder as things are watched, so holding the old index would silently leave
+// the cursor on a different item. If the item is gone, applyFilter has already
+// clamped the index.
+func (m *model) restoreSelection() {
+	if m.preservedItemID == "" {
+		return
+	}
+	for i, item := range m.items {
+		if item.GetId() == m.preservedItemID {
+			m.currentItem = i
+			return
+		}
+	}
+}
+
 func (m *model) applyFilter() {
 	if !m.filterActive || m.filterInput.Value() == "" {
 		m.items = m.allItems
@@ -167,14 +195,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.playing = nil
 		m.updateKeys()
-		return m, m.fetchItems()
+		return m, nil
 
 	case toggleWatchedResult:
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err
 		}
-		return m, m.fetchItems()
+		return m, m.reloadItems()
 
 	case fetchItemsResult:
 		m.loading = false
@@ -182,9 +210,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.err = msg.err
 		}
 		m.allItems = msg.items
-		m.filterInput.SetValue("")
-		m.filterActive = false
-		m.applyFilter()
+		if m.preserveSelection {
+			m.preserveSelection = false
+			m.applyFilter()
+			m.restoreSelection()
+		} else {
+			m.filterInput.SetValue("")
+			m.filterActive = false
+			m.applyFilter()
+		}
 		m.updateKeys()
 		return m, nil
 
@@ -339,7 +373,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, m.toggleWatchedStatus()
 
 		case key.Matches(msg, m.keyMap.Refresh):
-			return m, m.fetchItems()
+			return m, m.reloadItems()
 
 		case key.Matches(msg, m.keyMap.Quit):
 			return m, tea.Quit
