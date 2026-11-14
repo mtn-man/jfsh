@@ -16,11 +16,10 @@ import (
 )
 
 type settings struct {
-	Host         string   `yaml:"host,omitempty"`
-	Username     string   `yaml:"username,omitempty"`
-	Device       string   `yaml:"device,omitempty"`
-	SkipSegments []string `yaml:"skip_segments,omitempty"`
-	PasswordFile string   `yaml:"password_file,omitempty"`
+	Host         string `yaml:"host,omitempty"`
+	Username     string `yaml:"username,omitempty"`
+	Device       string `yaml:"device,omitempty"`
+	PasswordFile string `yaml:"password_file,omitempty"`
 }
 
 type state struct {
@@ -31,11 +30,10 @@ type state struct {
 
 // Session contains the authenticated Jellyfin client and application configuration used with it.
 type Session struct {
-	Client       *jellyfin.Client
-	Host         string
-	UserID       string
-	Token        string
-	SkipSegments []string
+	Client *jellyfin.Client
+	Host   string
+	UserID string
+	Token  string
 }
 
 func readYAML(path string, value any) error {
@@ -147,11 +145,10 @@ func createSession(currentSettings settings, currentState state, clientVersion, 
 		return nil, err
 	}
 	return &Session{
-		Client:       client,
-		Host:         host,
-		UserID:       currentState.UserID,
-		Token:        currentState.Token,
-		SkipSegments: currentSettings.SkipSegments,
+		Client: client,
+		Host:   host,
+		UserID: currentState.UserID,
+		Token:  currentState.Token,
 	}, nil
 }
 

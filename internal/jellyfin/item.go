@@ -24,13 +24,6 @@ func getItemRuntime(ticks int64) string {
 	return fmt.Sprintf("%dh%dm", hours, minutes)
 }
 
-func GetResumePosition(item Item) (ticks int64) {
-	if data, ok := item.GetUserDataOk(); ok {
-		ticks = data.GetPlaybackPositionTicks()
-	}
-	return
-}
-
 // GetStreamingURL builds the playback URL for an item. The capitalized route
 // and the api_key are what the iina-jellyfin plugin matches on to recognize the
 // item and report playback against it.
@@ -40,17 +33,6 @@ func GetStreamingURL(host, token string, item Item) (string, error) {
 		return "", err
 	}
 	return fmt.Sprintf("%s/Videos/%s/stream?static=true&api_key=%s", host, *item.Id, url.QueryEscape(token)), nil
-}
-
-func GetMediaTitle(item Item) string {
-	title := item.GetPath()
-	switch item.GetType() {
-	case api.BASEITEMKIND_MOVIE:
-		title = fmt.Sprintf("%s (%d)", item.GetName(), item.GetProductionYear())
-	case api.BASEITEMKIND_EPISODE:
-		title = fmt.Sprintf("%s - S%d:E%d - %s (%d)", item.GetSeriesName(), item.GetParentIndexNumber(), item.GetIndexNumber(), item.GetName(), item.GetProductionYear())
-	}
-	return title
 }
 
 func GetItemTitle(item Item) string {
@@ -92,10 +74,6 @@ func GetItemDescription(item Item) string {
 	return str.String()
 }
 
-func IsMovie(item Item) bool {
-	return item.GetType() == api.BASEITEMKIND_MOVIE
-}
-
 func IsSeries(item Item) bool {
 	return item.GetType() == api.BASEITEMKIND_SERIES
 }
@@ -104,43 +82,9 @@ func IsEpisode(item Item) bool {
 	return item.GetType() == api.BASEITEMKIND_EPISODE
 }
 
-func IsVideo(item Item) bool {
-	return item.GetType() == api.BASEITEMKIND_VIDEO
-}
-
 func Watched(item Item) bool {
 	if data, ok := item.GetUserDataOk(); ok {
 		return data.GetPlayed()
 	}
 	return false
-}
-
-// ExternalSubtitleStream represents an external subtitle stream
-type ExternalSubtitleStream struct {
-	Language string
-	Title    string
-	Path     string
-}
-
-// GetExternalSubtitleStreams returns all external subtitle streams for an item
-func GetExternalSubtitleStreams(item Item) []ExternalSubtitleStream {
-	var subtitles []ExternalSubtitleStream
-	streams := item.GetMediaStreams()
-	for _, stream := range streams {
-		if stream.GetType() == "Subtitle" && stream.GetIsExternal() {
-			index := stream.GetIndex()
-			subtitle := ExternalSubtitleStream{}
-			if lang, ok := stream.GetLanguageOk(); ok && lang != nil {
-				subtitle.Language = *lang
-			}
-			if title, ok := stream.GetDisplayTitleOk(); ok && title != nil {
-				subtitle.Title = *title
-			} else {
-				subtitle.Title = fmt.Sprintf("External %d", index)
-			}
-			subtitle.Path = fmt.Sprintf("/Videos/%s/%s/Subtitles/%d/0/Stream.srt", item.GetId(), item.GetId(), index)
-			subtitles = append(subtitles, subtitle)
-		}
-	}
-	return subtitles
 }

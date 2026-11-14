@@ -41,25 +41,6 @@ in
         description = "Device name reported to Jellyfin. The hostname is used when unset.";
         example = "living-room";
       };
-
-      skipSegments = lib.mkOption {
-        type = lib.types.listOf (
-          lib.types.enum [
-            "Unknown"
-            "Commercial"
-            "Preview"
-            "Recap"
-            "Outro"
-            "Intro"
-          ]
-        );
-        default = [ ];
-        description = "Jellyfin media segment types to skip automatically.";
-        example = [
-          "Intro"
-          "Outro"
-        ];
-      };
     };
 
     passwordFile = lib.mkOption {
@@ -92,7 +73,6 @@ in
       {
         host = cfg.settings.host;
         username = cfg.settings.username;
-        skip_segments = cfg.settings.skipSegments;
       }
       // lib.optionalAttrs (cfg.settings.device != null) {
         device = cfg.settings.device;

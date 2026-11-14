@@ -115,8 +115,8 @@ When no reusable token or `password_file` is available, jfsh prompts for the
 password. Passwords are never stored by jfsh. Authentication tokens and the
 generated device ID are stored in `$XDG_STATE_HOME/jfsh/state.yaml`.
 
-`skip_segments` is still accepted in the config file for compatibility with upstream,
-but this fork never reads it.
+A leftover `skip_segments` key in an existing config file is ignored rather than
+rejected, so upstream configs still load.
 
 ## Plans
 

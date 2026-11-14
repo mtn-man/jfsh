@@ -70,10 +70,6 @@
                     host = "https://jellyfin.example.com";
                     username = "test";
                     device = "test-device";
-                    skipSegments = [
-                      "Intro"
-                      "Outro"
-                    ];
                   };
                   passwordFile = "/run/secrets/jfsh-password";
                 };
@@ -92,8 +88,6 @@
             ${pkgs.gnugrep}/bin/grep -F "username: test" ${generatedConfig}
             ${pkgs.gnugrep}/bin/grep -F "device: test-device" ${generatedConfig}
             ${pkgs.gnugrep}/bin/grep -F "password_file: /run/secrets/jfsh-password" ${generatedConfig}
-            ${pkgs.gnugrep}/bin/grep -F -- "- Intro" ${generatedConfig}
-            ${pkgs.gnugrep}/bin/grep -F -- "- Outro" ${generatedConfig}
             if ${pkgs.gnugrep}/bin/grep -q "^password:" ${generatedConfig}; then
               exit 1
             fi
