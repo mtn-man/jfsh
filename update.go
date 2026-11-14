@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/hacel/jfsh/internal/iina"
 	"github.com/hacel/jfsh/internal/jellyfin"
-	"github.com/hacel/jfsh/internal/mpv"
 )
 
 type playbackStopped struct {
@@ -29,14 +29,14 @@ func (m *model) playItem() tea.Cmd {
 				return item.GetId() == i.GetId()
 			})
 			idx = max(0, idx) // sanity check
-			if err := mpv.Play(session, items, idx); err != nil {
+			if err := iina.Play(session, items, idx); err != nil {
 				return playbackStopped{err}
 			}
 			return playbackStopped{nil}
 		}
 	}
 	return func() tea.Msg {
-		if err := mpv.Play(session, []jellyfin.Item{item}, 0); err != nil {
+		if err := iina.Play(session, []jellyfin.Item{item}, 0); err != nil {
 			return playbackStopped{err}
 		}
 		return playbackStopped{nil}

@@ -45,7 +45,7 @@ func (m model) View() string {
 		messageView := lipgloss.NewStyle().Foreground(textColor).Render("Playing")
 		title := jellyfin.GetItemTitle(*m.playing)
 		titleView := lipgloss.NewStyle().Foreground(pinkColor).Render(title)
-		exitView := lipgloss.NewStyle().Foreground(dimTextColor).Render("\nExit mpv to return")
+		exitView := lipgloss.NewStyle().Foreground(dimTextColor).Render("\nPlaying in IINA")
 		v := lipgloss.NewStyle().Padding(1, 2).BorderForeground(brightPinkColor).Render(
 			lipgloss.JoinVertical(lipgloss.Top, messageView, titleView, exitView),
 		)

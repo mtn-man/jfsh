@@ -2,6 +2,7 @@ package jellyfin
 
 import (
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/sj14/jellyfin-go/api"
@@ -30,12 +31,15 @@ func GetResumePosition(item Item) (ticks int64) {
 	return
 }
 
-func GetStreamingURL(host string, item Item) (string, error) {
+// GetStreamingURL builds the playback URL for an item. The capitalized route
+// and the api_key are what the iina-jellyfin plugin matches on to recognize the
+// item and report playback against it.
+func GetStreamingURL(host, token string, item Item) (string, error) {
 	host, err := NormalizeHost(host)
 	if err != nil {
 		return "", err
 	}
-	return fmt.Sprintf("%s/videos/%s/stream?static=true", host, *item.Id), nil
+	return fmt.Sprintf("%s/Videos/%s/stream?static=true&api_key=%s", host, *item.Id, url.QueryEscape(token)), nil
 }
 
 func GetMediaTitle(item Item) string {

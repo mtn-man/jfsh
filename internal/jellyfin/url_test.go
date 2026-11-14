@@ -65,12 +65,12 @@ func TestGetStreamingURL(t *testing.T) {
 	itemID := "127ac3264ae6ff99c33b9bfce1f0b160"
 	item := Item{Id: &itemID}
 
-	got, err := GetStreamingURL("https://example.com/jellyfin/", item)
+	got, err := GetStreamingURL("https://example.com/jellyfin/", "tok3n", item)
 	if err != nil {
 		t.Fatalf("GetStreamingURL returned error: %v", err)
 	}
 
-	want := "https://example.com/jellyfin/videos/127ac3264ae6ff99c33b9bfce1f0b160/stream?static=true"
+	want := "https://example.com/jellyfin/Videos/127ac3264ae6ff99c33b9bfce1f0b160/stream?static=true&api_key=tok3n"
 	if got != want {
 		t.Fatalf("GetStreamingURL = %q, want %q", got, want)
 	}
