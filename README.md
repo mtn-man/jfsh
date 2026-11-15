@@ -1,7 +1,8 @@
 # jfsh (IINA fork)
 
 A terminal-based client for [Jellyfin](https://jellyfin.org) that lets you browse your
-media library and play videos in [IINA](https://iina.io).
+media library and play videos in [IINA](https://iina.io). Intended to be used alongside the
+Jellyfin IINA Plugin [mhajder/iina-jellyfin](https://github.com/mhajder/iina-jellyfin)
 
 Private fork of [hacel/jfsh](https://github.com/hacel/jfsh), which plays through
 [mpv](https://mpv.io) instead. Upstream was inspired by
@@ -43,8 +44,7 @@ These come from the IINA plugins rather than from jfsh:
 - Resumes playback, and reports progress back to Jellyfin
 - Autoplays the next episode
 - Picks preferred audio and subtitle tracks
-- Skips intros, via [Episode Info](https://github.com/Zain-Imam/iina-episode-info)
-
+  
 ## Installation
 
 ### Prerequisites
