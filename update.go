@@ -7,8 +7,8 @@ import (
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hacel/jfsh/internal/iina"
-	"github.com/hacel/jfsh/internal/jellyfin"
+	"github.com/mtn-man/jfsh/internal/iina"
+	"github.com/mtn-man/jfsh/internal/jellyfin"
 )
 
 type playbackStopped struct {

@@ -11,8 +11,8 @@ import (
 	"log/slog"
 	"os/exec"
 
-	"github.com/hacel/jfsh/internal/config"
-	"github.com/hacel/jfsh/internal/jellyfin"
+	"github.com/mtn-man/jfsh/internal/config"
+	"github.com/mtn-man/jfsh/internal/jellyfin"
 )
 
 // player is IINA's command line tool, symlinked as "iina" by the Homebrew cask.

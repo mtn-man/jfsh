@@ -1,4 +1,4 @@
-module github.com/hacel/jfsh
+module github.com/mtn-man/jfsh
 
 go 1.23.1
 

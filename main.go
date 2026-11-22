@@ -9,7 +9,7 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hacel/jfsh/internal/config"
+	"github.com/mtn-man/jfsh/internal/config"
 
 	"github.com/adrg/xdg"
 	"github.com/spf13/pflag"

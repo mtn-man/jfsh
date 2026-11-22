@@ -5,8 +5,8 @@ import (
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/hacel/jfsh/internal/config"
-	"github.com/hacel/jfsh/internal/jellyfin"
+	"github.com/mtn-man/jfsh/internal/config"
+	"github.com/mtn-man/jfsh/internal/jellyfin"
 )
 
 type tab int

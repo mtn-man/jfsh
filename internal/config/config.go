@@ -11,7 +11,7 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/google/uuid"
-	"github.com/hacel/jfsh/internal/jellyfin"
+	"github.com/mtn-man/jfsh/internal/jellyfin"
 	"gopkg.in/yaml.v3"
 )
 

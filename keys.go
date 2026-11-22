@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/hacel/jfsh/internal/jellyfin"
+	"github.com/mtn-man/jfsh/internal/jellyfin"
 )
 
 // KeyMap defines keybindings. It satisfies to the help.KeyMap interface, which is used to render the menu.
