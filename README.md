@@ -4,6 +4,9 @@ A terminal-based client for [Jellyfin](https://jellyfin.org) that lets you brows
 media library and play videos in [IINA](https://iina.io). Intended to be used alongside the
 Jellyfin IINA Plugin [mhajder/iina-jellyfin](https://github.com/mhajder/iina-jellyfin)
 
+> **Note:** Unlike upstream, this fork does not sync playback progress with Jellyfin. That is
+> instead delegated to the [iina-jellyfin](https://github.com/mhajder/iina-jellyfin) plugin.
+
 Private fork of [hacel/jfsh](https://github.com/hacel/jfsh), which plays through
 [mpv](https://mpv.io) instead. Upstream was inspired by
 [jftui](https://github.com/Aanok/jftui).
