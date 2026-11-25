@@ -81,8 +81,8 @@ Or, from a clone of this repository:
 go install .
 ```
 
-Upstream's AUR package, `nix run github:hacel/jfsh` and the GitHub releases all install
-*upstream* jfsh, which uses mpv, so they are not install paths for this fork.
+Upstream's AUR package, `nix run github:hacel/jfsh` and upstream's GitHub releases all
+install *upstream* jfsh, which uses mpv, so they are not install paths for this fork.
 
 ## Usage
 
