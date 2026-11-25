@@ -7,7 +7,7 @@ Jellyfin IINA Plugin [mhajder/iina-jellyfin](https://github.com/mhajder/iina-jel
 > **Note:** Unlike upstream, this fork does not sync playback progress with Jellyfin. That is
 > instead delegated to the [iina-jellyfin](https://github.com/mhajder/iina-jellyfin) plugin.
 
-Private fork of [hacel/jfsh](https://github.com/hacel/jfsh), which plays through
+A fork of [hacel/jfsh](https://github.com/hacel/jfsh), which plays through
 [mpv](https://mpv.io) instead. Upstream was inspired by
 [jftui](https://github.com/Aanok/jftui).
 
@@ -63,11 +63,19 @@ These come from the IINA plugins rather than from jfsh:
   IINA and logged in to the same server. Without it, video still plays but nothing is
   reported back to Jellyfin.
 
+  Developed and tested against plugin version **0.9.1**. jfsh relies on the plugin
+  recognizing the capitalized `/Videos/{id}/stream` route with an `api_key`, so a
+  later release that changes how it matches URLs could break playback tracking.
+
 mpv is not required.
 
 ### Install
 
-From a clone of this repository:
+```sh
+go install github.com/mtn-man/jfsh@latest
+```
+
+Or, from a clone of this repository:
 
 ```sh
 go install .
@@ -105,6 +113,27 @@ Upstream's AUR package, `nix run github:hacel/jfsh` and the GitHub releases all 
 
    - Press **`q`** at any time to exit jfsh.
 
+## Security note: the token is in the stream URL
+
+To be recognized by the iina-jellyfin plugin, the stream URL carries your Jellyfin
+access token as `api_key`, and jfsh passes that URL to IINA as a command-line argument.
+That has a few consequences:
+
+- The token is visible in the process list (`ps`) to anything that can read your
+  processes while `iina` is launching, and may be kept by IINA wherever it records the
+  URLs it opens, such as its playback history or recent files. jfsh itself never logs
+  the URL, not even with debug logging on.
+- The token is the same one jfsh stores in `state.yaml`: a session for this device,
+  not your password. Anyone holding it can act as your user on the server until it is
+  revoked.
+- To revoke it, remove the device in Jellyfin under Dashboard → Devices, then delete
+  `state.yaml` so jfsh signs in again and prompts for the password. jfsh does not
+  check a stored token, so without that step it keeps using the revoked one and
+  requests fail. Clearing IINA's history removes any copy it kept.
+
+This is inherent to the approach, since the plugin needs the token to match the item,
+so it is only a concern on a machine you don't fully control or share with others.
+
 ## Configuration
 
 By default, the configuration file is stored in `$XDG_CONFIG_HOME/jfsh/jfsh.yaml`. If
@@ -124,6 +153,11 @@ generated device ID are stored in `$XDG_STATE_HOME/jfsh/state.yaml`.
 
 A leftover `skip_segments` key in an existing config file is ignored rather than
 rejected, so upstream configs still load.
+
+## AI disclosure
+
+This fork was created with the help of Claude, an AI assistant from Anthropic. Its
+code and behavior have been verified by human review.
 
 ## Plans
 
