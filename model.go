@@ -1,6 +1,8 @@
 package main
 
 import (
+	"time"
+
 	"github.com/charmbracelet/bubbles/help"
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -22,6 +24,11 @@ const (
 	SearchTabName        = "Search"
 )
 
+// focusRefreshInterval is the minimum time since the last fetch before regaining
+// terminal focus triggers another one. Focus also changes on Ghostty tab and split
+// switches, so without this an ordinary alt-tab would hit the server every time.
+const focusRefreshInterval = 15 * time.Second
+
 type model struct {
 	keyMap KeyMap
 	help   help.Model
@@ -38,10 +45,9 @@ type model struct {
 	allItems    []jellyfin.Item
 	currentItem int
 
-	// Set by reloadItems so the next fetchItemsResult keeps the filter and puts
-	// the cursor back on the item it was on.
-	preserveSelection bool
-	preservedItemID   string
+	// fetchGen numbers fetches. Each fetchItemsResult carries the number it was
+	// issued under, and only the latest one is applied.
+	fetchGen int
 
 	filterActive bool
 	filterInput  textinput.Model
@@ -53,6 +59,14 @@ type model struct {
 	err     error
 	spinner spinner.Model
 	loading bool
+
+	// lastFetch is when the last fetch was issued. It throttles refreshes on focus.
+	lastFetch time.Time
+
+	// initCmd is the startup fetch, built in initialModel rather than in Init.
+	// Init has a value receiver, so the fetchGen and lastFetch that fetchItems
+	// records there would be lost, and the first result dropped as stale.
+	initCmd tea.Cmd
 }
 
 func initialModel(session *config.Session) model {
@@ -71,15 +85,15 @@ func initialModel(session *config.Session) model {
 		searchInput: searchInput,
 		filterInput: filterInput,
 		spinner:     spinner.New(spinner.WithSpinner(spinner.Dot)),
-		loading:     true,
 	}
+	m.initCmd = m.fetchItems()
 	m.updateKeys()
 	return m
 }
 
 func (m model) Init() tea.Cmd {
 	return tea.Batch(
-		m.fetchItems(),
+		m.initCmd,
 		m.spinner.Tick,
 	)
 }

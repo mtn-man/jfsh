@@ -96,6 +96,10 @@ Upstream's AUR package, `nix run github:hacel/jfsh` and the GitHub releases all 
 
    - Select an item and press **Enter** or **Space** to play it.
    - IINA opens in its own window and jfsh returns to the browser.
+   - When you switch back to the terminal, the list refreshes on its own so Resume and
+     Next Up reflect what you just watched. It refreshes at most once every 15 seconds;
+     press **`r`** to refresh sooner. This needs a terminal with focus reporting
+     (Ghostty, iTerm2, kitty, WezTerm). Under tmux, also set `set -g focus-events on`.
 
 4. **Quit**
 

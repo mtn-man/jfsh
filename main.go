@@ -82,7 +82,9 @@ func main() {
 	}
 
 	// now we can run the main bubbletea model
-	p := tea.NewProgram(initialModel(session), tea.WithAltScreen())
+	// WithReportFocus turns on terminal focus reporting (mode 1004) so the list
+	// can refresh when the window regains focus, e.g. after watching in IINA.
+	p := tea.NewProgram(initialModel(session), tea.WithAltScreen(), tea.WithReportFocus())
 	if _, err := p.Run(); err != nil {
 		panic(err)
 	}

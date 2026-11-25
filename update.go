@@ -1,8 +1,10 @@
 package main
 
 import (
+	"log/slog"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/key"
 	"github.com/charmbracelet/bubbles/spinner"
@@ -23,7 +25,9 @@ func (m *model) playItem() tea.Cmd {
 			// get all episodes of the series and find the index of selected episode
 			items, err := session.Client.GetEpisodes(item)
 			if err != nil {
-				return err
+				// playbackStopped, not a bare error: the error case doesn't clear
+				// m.playing, which would leave every key disabled, ctrl+c included.
+				return playbackStopped{err}
 			}
 			idx := slices.IndexFunc(items, func(i jellyfin.Item) bool {
 				return item.GetId() == i.GetId()
@@ -71,88 +75,104 @@ func (m *model) toggleWatchedStatus() tea.Cmd {
 type fetchItemsResult struct {
 	items []jellyfin.Item
 	err   error
+
+	// gen is the fetchGen the request was issued under. Update ignores any result
+	// but the latest, so a slow reload can't land on top of a tab switch made
+	// while it was in flight.
+	gen int
+
+	// reload is set by reloadItems: keep the filter, and put the cursor back on
+	// keepID. It travels with the request rather than sitting on the model, so a
+	// superseded reload can't leak it into the fetch that replaced it.
+	reload bool
+	keepID string
 }
 
+// fetchItems loads the current view from scratch, clearing the filter and
+// cursor, which is what a tab change or drilling into a series wants.
 func (m *model) fetchItems() tea.Cmd {
+	return m.startFetch(false, "")
+}
+
+// reloadItems refetches the current list without disturbing the view: the filter
+// stays applied and the cursor returns to the item it was on.
+func (m *model) reloadItems() tea.Cmd {
+	keepID := ""
+	if m.currentItem < len(m.items) {
+		keepID = m.items[m.currentItem].GetId()
+	}
+	return m.startFetch(true, keepID)
+}
+
+func (m *model) startFetch(reload bool, keepID string) tea.Cmd {
 	m.loading = true
-	session := m.session
+	m.lastFetch = time.Now()
+	m.fetchGen++
+	gen := m.fetchGen
+	query := m.itemQuery()
+	return func() tea.Msg {
+		items, err := query()
+		return fetchItemsResult{items: items, err: err, gen: gen, reload: reload, keepID: keepID}
+	}
+}
+
+// itemQuery returns the request for the current view. It copies what it needs
+// out of the model now, so the request reads nothing from the model when it
+// later runs on another goroutine.
+func (m *model) itemQuery() func() ([]jellyfin.Item, error) {
+	client := m.session.Client
 	if m.currentSeries != nil {
-		return func() tea.Msg {
-			items, err := session.Client.GetEpisodes(*m.currentSeries)
-			if err != nil {
-				return fetchItemsResult{nil, err}
-			}
-			return fetchItemsResult{items, nil}
-		}
+		series := *m.currentSeries
+		return func() ([]jellyfin.Item, error) { return client.GetEpisodes(series) }
 	}
 	switch m.currentTab {
 	case Resume:
-		return func() tea.Msg {
-			items, err := session.Client.GetResume(session.UserID)
-			if err != nil {
-				return fetchItemsResult{nil, err}
-			}
-			return fetchItemsResult{items, nil}
-		}
+		userID := m.session.UserID
+		return func() ([]jellyfin.Item, error) { return client.GetResume(userID) }
 	case NextUp:
-		return func() tea.Msg {
-			items, err := session.Client.GetNextUp()
-			if err != nil {
-				return fetchItemsResult{nil, err}
-			}
-			return fetchItemsResult{items, nil}
-		}
+		return client.GetNextUp
 	case RecentlyAdded:
-		return func() tea.Msg {
-			items, err := session.Client.GetRecentlyAdded()
-			if err != nil {
-				return fetchItemsResult{nil, err}
-			}
-			return fetchItemsResult{items, nil}
-		}
+		return client.GetRecentlyAdded
 	case Search:
 		query := m.searchInput.Value()
-		return func() tea.Msg {
+		return func() ([]jellyfin.Item, error) {
 			if query == "" {
-				return fetchItemsResult{nil, nil}
+				return nil, nil
 			}
-			items, err := session.Client.Search(query)
-			if err != nil {
-				return fetchItemsResult{nil, err}
-			}
-			return fetchItemsResult{items, nil}
+			return client.Search(query)
 		}
 	default:
 		panic("oops, selected tab is not in switch statement")
 	}
 }
 
-// reloadItems refetches the current list without disturbing the view: the filter
-// stays applied and the cursor returns to the item it was on. fetchItems clears
-// both, which is what a tab change or drilling into a series wants.
-func (m *model) reloadItems() tea.Cmd {
-	m.preserveSelection = true
-	m.preservedItemID = ""
-	if m.currentItem < len(m.items) {
-		m.preservedItemID = m.items[m.currentItem].GetId()
-	}
-	return m.fetchItems()
-}
-
-// restoreSelection puts the cursor back on preservedItemID. Resume and Next Up
+// restoreSelection puts the cursor back on the item with id. Resume and Next Up
 // reorder as things are watched, so holding the old index would silently leave
 // the cursor on a different item. If the item is gone, applyFilter has already
 // clamped the index.
-func (m *model) restoreSelection() {
-	if m.preservedItemID == "" {
+func (m *model) restoreSelection(id string) {
+	if id == "" {
 		return
 	}
 	for i, item := range m.items {
-		if item.GetId() == m.preservedItemID {
+		if item.GetId() == id {
 			m.currentItem = i
 			return
 		}
 	}
+}
+
+// shouldRefreshOnFocus reports whether regaining terminal focus should reload the
+// list. It skips the reload while a fetch is already in flight, since that fetch
+// will bring the list up to date anyway. It also skips while IINA is launching,
+// while the user is typing a search (the fetch would run the half-typed query), and
+// within focusRefreshInterval of the last fetch.
+func (m *model) shouldRefreshOnFocus() bool {
+	switch {
+	case m.loading, m.playing != nil, m.searchInput.Focused():
+		return false
+	}
+	return time.Since(m.lastFetch) >= focusRefreshInterval
 }
 
 func (m *model) applyFilter() {
@@ -200,20 +220,35 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case toggleWatchedResult:
 		m.loading = false
 		if msg.err != nil {
+			// No reload: nothing changed, and its success would clear the error
+			// before it could be read.
 			m.err = msg.err
+			return m, nil
 		}
 		return m, m.reloadItems()
 
 	case fetchItemsResult:
+		if msg.gen != m.fetchGen {
+			// Superseded. The newer fetch is still in flight, so stay loading.
+			return m, nil
+		}
 		m.loading = false
 		if msg.err != nil {
 			m.err = msg.err
+			if msg.reload {
+				// Keep the list being refreshed rather than blanking it. A failed
+				// background refresh (e.g. no network right after waking) would
+				// otherwise empty the view on an ordinary alt-tab.
+				return m, nil
+			}
+			msg.items = nil
+		} else {
+			m.err = nil
 		}
 		m.allItems = msg.items
-		if m.preserveSelection {
-			m.preserveSelection = false
+		if msg.reload {
 			m.applyFilter()
-			m.restoreSelection()
+			m.restoreSelection(msg.keepID)
 		} else {
 			m.filterInput.SetValue("")
 			m.filterActive = false
@@ -221,6 +256,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		m.updateKeys()
 		return m, nil
+
+	case tea.FocusMsg:
+		if !m.shouldRefreshOnFocus() {
+			return m, nil
+		}
+		slog.Debug("refreshing on focus", "since_last_fetch", time.Since(m.lastFetch).Round(time.Second).String())
+		return m, m.reloadItems()
 
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
