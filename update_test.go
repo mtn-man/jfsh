@@ -4,6 +4,8 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
+	"path/filepath"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -286,3 +288,57 @@ func TestFailedToggleKeepsErrorWithoutReloading(t *testing.T) {
 }
 
 var errToggle = errors.New("toggle failed")
+
+// fakeIINA puts a stand-in iina-cli on PATH that exits immediately, as the real
+// one does.
+func fakeIINA(t *testing.T) {
+	t.Helper()
+	dir := t.TempDir()
+	if err := os.WriteFile(filepath.Join(dir, "iina"), []byte("#!/bin/sh\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PATH", dir)
+}
+
+func TestPlayingScreenLingers(t *testing.T) {
+	fakeIINA(t)
+	old := minPlayingScreenTime
+	minPlayingScreenTime = 200 * time.Millisecond
+	t.Cleanup(func() { minPlayingScreenTime = old })
+
+	srv := newStubServer(t)
+	m := loadedModel(t, srv)
+	m.session.Host, m.session.Token = srv.URL, "token"
+
+	start := time.Now()
+	msg := m.playItem()()
+	elapsed := time.Since(start)
+
+	if got, ok := msg.(playbackStopped); !ok || got.err != nil {
+		t.Fatalf("got %#v, want playbackStopped with no error", msg)
+	}
+	if elapsed < minPlayingScreenTime {
+		t.Errorf("playbackStopped after %v, want at least %v", elapsed, minPlayingScreenTime)
+	}
+}
+
+func TestPlayingScreenDoesNotLingerOnError(t *testing.T) {
+	t.Setenv("PATH", t.TempDir()) // no iina, so launching fails
+	old := minPlayingScreenTime
+	minPlayingScreenTime = 2 * time.Second
+	t.Cleanup(func() { minPlayingScreenTime = old })
+
+	srv := newStubServer(t)
+	m := loadedModel(t, srv)
+
+	start := time.Now()
+	msg := m.playItem()()
+	elapsed := time.Since(start)
+
+	if got, ok := msg.(playbackStopped); !ok || got.err == nil {
+		t.Fatalf("got %#v, want playbackStopped with an error", msg)
+	}
+	if elapsed >= minPlayingScreenTime {
+		t.Errorf("error took %v to surface, want it immediate", elapsed)
+	}
+}

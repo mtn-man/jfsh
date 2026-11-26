@@ -29,6 +29,11 @@ const (
 // switches, so without this an ordinary alt-tab would hit the server every time.
 const focusRefreshInterval = 15 * time.Second
 
+// minPlayingScreenTime is how long the "Playing" screen stays up after a
+// successful launch. iina-cli returns almost immediately, so without a floor the
+// screen would flash by too fast to read. A var so tests can shorten it.
+var minPlayingScreenTime = 3 * time.Second
+
 type model struct {
 	keyMap KeyMap
 	help   help.Model

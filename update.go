@@ -20,29 +20,33 @@ type playbackStopped struct {
 func (m *model) playItem() tea.Cmd {
 	session := m.session
 	item := m.items[m.currentItem]
-	if jellyfin.IsEpisode(item) {
-		return func() tea.Msg {
-			// get all episodes of the series and find the index of selected episode
-			items, err := session.Client.GetEpisodes(item)
-			if err != nil {
-				// playbackStopped, not a bare error: the error case doesn't clear
-				// m.playing, which would leave every key disabled, ctrl+c included.
-				return playbackStopped{err}
-			}
-			idx := slices.IndexFunc(items, func(i jellyfin.Item) bool {
-				return item.GetId() == i.GetId()
-			})
-			idx = max(0, idx) // sanity check
-			if err := iina.Play(session, items, idx); err != nil {
-				return playbackStopped{err}
-			}
-			return playbackStopped{nil}
+
+	launch := func() error {
+		if !jellyfin.IsEpisode(item) {
+			return iina.Play(session, []jellyfin.Item{item}, 0)
 		}
+		// get all episodes of the series and find the index of selected episode
+		items, err := session.Client.GetEpisodes(item)
+		if err != nil {
+			return err
+		}
+		idx := slices.IndexFunc(items, func(i jellyfin.Item) bool {
+			return item.GetId() == i.GetId()
+		})
+		idx = max(0, idx) // sanity check
+		return iina.Play(session, items, idx)
 	}
+
 	return func() tea.Msg {
-		if err := iina.Play(session, []jellyfin.Item{item}, 0); err != nil {
+		start := time.Now()
+		// playbackStopped, not a bare error: the error case doesn't clear
+		// m.playing, which would leave every key disabled, ctrl+c included.
+		if err := launch(); err != nil {
+			// No wait on failure: the error should show right away.
 			return playbackStopped{err}
 		}
+		// Hold the "Playing" screen long enough to be read.
+		time.Sleep(minPlayingScreenTime - time.Since(start))
 		return playbackStopped{nil}
 	}
 }
